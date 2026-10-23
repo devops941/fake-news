@@ -43,7 +43,14 @@ SNIPPET_LENGTH = 300
 RELATED_RESULTS_POOL_SIZE = 15
 RELATED_RESULTS_PAGE_SIZE = 5
 
-app = Flask(__name__)
+TEMPLATES_DIR = ROOT_DIR / "templates"
+STATIC_DIR = ROOT_DIR / "static"
+
+app = Flask(
+    __name__,
+    template_folder=str(TEMPLATES_DIR),
+    static_folder=str(STATIC_DIR),
+)
 app.secret_key = "dev-secret-key-kz-ml-02"
 handler = app
 
