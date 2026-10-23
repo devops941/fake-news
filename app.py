@@ -113,6 +113,33 @@ def get_db():
     return g.db
 
 
+@app.teardown_appcontext
+def close_db(exception=None):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
+
+
+@app.before_request
+def load_device_id():
+    """Retrieve existing device_id from persistent cookie, or generate a unique ID for this device."""
+    g.device_id = request.cookies.get("device_id") or uuid.uuid4().hex
+
+
+@app.after_request
+def save_device_cookie(response):
+    """Ensure every device receives a persistent 2-year device cookie for private history tracking."""
+    if not request.cookies.get("device_id") and hasattr(g, "device_id"):
+        response.set_cookie(
+            "device_id",
+            g.device_id,
+            max_age=60 * 60 * 24 * 730,  # 2 years
+            httponly=True,
+            samesite="Lax",
+        )
+    return response
+
+
 def load_model():
     if joblib is None:
         return None, None
