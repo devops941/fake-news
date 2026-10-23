@@ -1,0 +1,21 @@
+[tool.pyrefly]
+python-interpreter-path = "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\python.exe"
+search-paths = [
+    "d:\\final_year_project\\fake_news",
+    "C:\\Users\\user\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages"
+]
+ignore-missing-imports = [
+    "flask",
+    "flask.*",
+    "joblib",
+    "joblib.*",
+    "sklearn",
+    "sklearn.*",
+    "groq",
+    "groq.*",
+    "nltk",
+    "nltk.*",
+    "ddgs",
+    "ddgs.*",
+    "dotenv"
+]

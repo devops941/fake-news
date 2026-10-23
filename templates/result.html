@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}Verification Result — Fake News Detector{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+
+    <!-- Top Navigation breadcrumb -->
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <a href="{{ url_for('index') }}" class="btn-secondary-light">
+        <i class="bi bi-arrow-left"></i> Verify another article
+      </a>
+      <span class="text-muted small">
+        <i class="bi bi-clock me-1"></i> Checked: {{ created_at or 'Just now' }}
+      </span>
+    </div>
+
+    <!-- Primary Verdict Card -->
+    <div class="light-card p-4 p-md-5 text-center mb-4">
+      <div class="mb-3">
+        {% if label == "REAL" %}
+        <div class="verdict-hero-badge real">
+          <i class="bi bi-check-circle-fill fs-3"></i>
+          <span>VERIFIED REAL</span>
+        </div>
+        {% else %}
+        <div class="verdict-hero-badge fake">
+          <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+          <span>FLAGGED AS FAKE</span>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
+        <span class="text-muted fw-semibold">Confidence Score:</span>
+        <span class="fs-4 fw-bold {% if label == 'REAL' %}text-success{% else %}text-danger{% endif %}">
+          {{ confidence }}%
+        </span>
+      </div>
+
+      <!-- Modern Progress Bar -->
+      <div class="progress-modern mx-auto mb-3" style="max-width: 420px;">
+        <div class="progress-modern-bar {% if label == 'REAL' %}real{% else %}fake{% endif %}" role="progressbar"
+          id="confidenceProgressBar" data-confidence="{{ confidence }}" aria-valuenow="{{ confidence }}"
+          aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+
+      <!-- {% if ai_provider and ai_provider != "Offline / Fallback" %}
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-light border small text-muted mb-3">
+          <i class="bi bi-cpu-fill text-primary"></i>
+          <span>Primary Engine: <strong>{{ ai_provider }}</strong></span>
+        </div>
+      {% endif %} -->
+
+      <!-- {% if short_warning %}
+      <div class="alert alert-warning text-start d-flex align-items-center gap-2 rounded-3 mx-auto mt-2 mb-3"
+        style="max-width: 600px;" role="alert">
+        <i class="bi bi-info-circle-fill flex-shrink-0 text-warning"></i>
+        <div class="small">{{ short_warning }}</div>
+      </div>
+      {% endif %} -->
+
+      <div class="p-3 rounded-3 text-start bg-light border mx-auto mt-2" style="max-width: 600px;">
+        <div class="small fw-bold text-muted text-uppercase mb-1" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+          Text Analyzed:
+        </div>
+        <p class="mb-0 text-secondary" style="font-size: 0.94rem;">
+          {{ snippet }}{% if snippet|length >= 300 %}…{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <!-- AI Fact-Checking Deep Breakdown -->
+    {% if ai_summary %}
+    <div class="light-card fact-check-box mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+        <div class="d-flex align-items-center gap-2">
+          <div class="p-2 rounded-3" style="background: var(--primary-light); color: var(--primary);">
+            <i class="bi bi-patch-check-fill fs-5"></i>
+          </div>
+          <div>
+            <h5 class="fw-bold mb-0" style="color: var(--text-main);">AI Fact-Check Explanation</h5>
+            <small class="text-muted">Powered by {{ ai_provider or 'Claude & Groq' }}</small>
+          </div>
+        </div>
+        <span
+          class="badge rounded-pill {% if ai_verdict == 'REAL' %}bg-success{% else %}bg-danger{% endif %} px-3 py-2">
+          {{ ai_verdict or label }}
+        </span>
+      </div>
+
+      <p class="text-secondary mb-3" style="font-size: 0.98rem; line-height: 1.6;">
+        {{ ai_summary }}
+      </p>
+
+      {% if ai_details %}
+      <div class="pt-2 border-top">
+        <div class="small fw-bold text-muted text-uppercase mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+          Key Factual Points & Evidence:
+        </div>
+        <ul class="evidence-list">
+          {% for detail in ai_details %}
+          <li>{{ detail }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Dual-Engine Comparison: AI vs Local ML -->
+    <div class="light-card p-4 mb-4">
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-sliders2-vertical text-primary fs-5"></i>
+        <h5 class="fw-bold mb-0">Dual-Engine Methodology Comparison</h5>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <!-- Engine 1: AI Fact-Check -->
+        <div class="col-md-6">
+          <div class="engine-pill ai h-100">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="fw-bold small text-primary">1. Deep AI Knowledge</span>
+              <span class="badge {% if ai_verdict == 'REAL' %}bg-success{% else %}bg-danger{% endif %}">
+                {{ ai_verdict or label }} ({{ ai_confidence or confidence }}%)
+              </span>
+            </div>
+            <p class="small text-muted mb-0">
+              Evaluates world knowledge, true author attributions, dates, and historical factuality.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-2 px-3 rounded-2 bg-light border small text-muted">
+        <i class="bi bi-lightbulb-fill text-warning me-1"></i>
+        <strong>Academic Insight:</strong> Traditional TF-IDF classifiers evaluate writing registers (e.g.
+        sensationalist phrasing), while LLMs verify factual grounding. When an article has normal phrasing but false
+        factual claims, the AI verdict provides ground truth.
+      </div>
+    </div>
+
+    <!-- Related Web Results / Citations -->
+    <div class="light-card p-4 mb-4">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-globe2 text-primary fs-5"></i>
+          <h5 class="fw-bold mb-0">Live Cross-Reference Citations</h5>
+        </div>
+        <span class="small text-muted">via DuckDuckGo Search</span>
+      </div>
+
+      <p class="text-muted small mb-3">
+        Query: <code class="text-primary bg-light px-2 py-1 rounded">"{{ search_query }}"</code> &bull; Independent
+        journalism sources to cross-examine claims.
+      </p>
+
+      {% if related_results %}
+      <div class="d-flex flex-column gap-2">
+        {% for r in related_results %}
+        <a href="{{ r.url }}" target="_blank" rel="noopener noreferrer" class="source-result-item">
+          <div class="d-flex align-items-center justify-content-between mb-1">
+            <span class="fw-bold text-primary" style="font-size: 0.98rem;">{{ r.title }}</span>
+            <i class="bi bi-box-arrow-up-right small text-muted"></i>
+          </div>
+          <div class="small text-success mb-1 text-truncate" style="font-size: 0.78rem;">{{ r.url }}</div>
+          <div class="small text-secondary" style="font-size: 0.88rem; line-height: 1.45;">{{ r.snippet }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-4 text-muted bg-light rounded-3">
+        <i class="bi bi-search fs-3 d-block mb-1 text-muted"></i>
+        <span class="small">No live search results available for this query or network lookup paused.</span>
+      </div>
+      {% endif %}
+
+      <!-- Pagination -->
+      {% if total_pages and total_pages > 1 %}
+      <nav aria-label="Results pages" class="mt-4">
+        <ul class="pagination pagination-sm justify-content-center mb-0">
+          <li class="page-item {{ 'disabled' if page <= 1 }}">
+            <a class="page-link" href="{{ url_for('result', check_id=check_id, page=page-1) }}">
+              <i class="bi bi-chevron-left"></i> Previous
+            </a>
+          </li>
+          {% for p in range(1, total_pages + 1) %}
+          <li class="page-item {{ 'active' if p == page }}">
+            <a class="page-link" href="{{ url_for('result', check_id=check_id, page=p) }}">{{ p }}</a>
+          </li>
+          {% endfor %}
+          <li class="page-item {{ 'disabled' if page >= total_pages }}">
+            <a class="page-link" href="{{ url_for('result', check_id=check_id, page=page+1) }}">
+              Next <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      {% endif %}
+    </div>
+
+    <!-- Actions Footer -->
+    <div class="d-flex flex-wrap justify-content-center gap-3 pb-4">
+      <a href="{{ url_for('index') }}" class="btn btn-verify px-4">
+        <i class="bi bi-search"></i> Verify Another Article
+      </a>
+      <a href="{{ url_for('history') }}" class="btn btn-secondary-light px-4">
+        <i class="bi bi-clock-history"></i> View All History
+      </a>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const bar = document.getElementById('confidenceProgressBar');
+    if (bar) {
+      const val = bar.getAttribute('data-confidence');
+      bar.style.width = val + '%';
+    }
+  });
+</script>
+{% endblock %}

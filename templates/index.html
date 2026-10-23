@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Verify News — AI & ML Fact-Check Detector{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+
+    <!-- Hero Header -->
+    <div class="text-center mb-4">
+      <div class="d-inline-flex align-items-center gap-2 px-3 py-1 mb-2 rounded-pill bg-white border shadow-sm">
+        <span class="badge rounded-pill" style="background: var(--primary-light); color: var(--primary); font-weight: 700;">v2.0 Dual Engine</span>
+        <span class="small text-muted">AI Fact-Check + Stylistic ML</span>
+      </div>
+      <h1 class="fw-bold mb-2" style="font-size: 2.2rem; letter-spacing: -0.02em; color: var(--text-main);">
+        Intelligent News Verification
+      </h1>
+      <p class="text-muted mx-auto" style="max-width: 620px; font-size: 1.02rem;">
+        Paste any news headline, social media claim, or article body below. Our system combines <strong>Deep AI World-Knowledge Fact Checking</strong> with <strong>Passive-Aggressive ML</strong>.
+      </p>
+    </div>
+
+    <!-- Main Card -->
+    <div class="light-card p-4 p-md-5 mb-4">
+      {% if error %}
+        <div class="alert alert-danger d-flex align-items-center gap-2 rounded-3 mb-4" role="alert">
+          <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+          <div>{{ error }}</div>
+        </div>
+      {% endif %}
+
+      {% if model_missing %}
+        <div class="alert alert-warning d-flex align-items-center gap-2 rounded-3 mb-4" role="alert">
+          <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+          <div>
+            Local ML model files are not yet generated. The system will rely primarily on <strong>AI Fact-Checking</strong>. You can train the local model anytime via <code>python train_model.py</code>.
+          </div>
+        </div>
+      {% endif %}
+
+
+
+      <!-- Verification Form -->
+      <form method="post" action="{{ url_for('check') }}" id="verifyForm">
+        <div class="mb-3">
+          <label for="headline" class="form-label-custom">
+            <span>News Headline / Claim</span>
+            <span class="text-muted fw-normal small">Optional if pasting full article</span>
+          </label>
+          <input
+            type="text"
+            class="form-control input-custom"
+            id="headline"
+            name="headline"
+            placeholder="e.g."
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="mb-4">
+          <label for="article" class="form-label-custom">
+            <span>Article Text / Statement</span>
+            <span class="text-muted fw-normal small" id="wordCountBadge">0 words</span>
+          </label>
+          <textarea
+            class="form-control input-custom"
+            id="article"
+            name="article"
+            rows="6"
+            placeholder="Paste the full article body, claim, or statement here to verify..."
+            oninput="updateWordCount()"
+          ></textarea>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 pt-2">
+          <div class="small text-muted d-flex align-items-center gap-2">
+            <i class="bi bi-shield-lock text-primary"></i>
+            <span>Encrypted local session &bull; Zero data sharing</span>
+          </div>
+          <button type="submit" class="btn btn-verify w-100 w-sm-auto px-4 py-2" id="submitBtn">
+            <i class="bi bi-search"></i>
+            <span>Verify Article</span>
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Feature Architecture Highlights -->
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="light-card p-3 h-100 bg-white">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="p-2 rounded-3" style="background: #eef2ff; color: #4f46e5;">
+              <i class="bi bi-robot fs-5"></i>
+            </div>
+            <h6 class="mb-0 fw-bold">AI Fact-Check</h6>
+          </div>
+          <p class="text-muted small mb-0">
+            Anthropic Claude & Groq verify real-world facts, dates, works, and author attributions.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="light-card p-3 h-100 bg-white">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="p-2 rounded-3" style="background: #e0f2fe; color: #0284c7;">
+              <i class="bi bi-cpu fs-5"></i>
+            </div>
+            <h6 class="mb-0 fw-bold">Passive-Aggressive ML</h6>
+          </div>
+          <p class="text-muted small mb-0">
+            Trained on 44K+ articles with TF-IDF to catch sensationalist, hyperbolic writing patterns.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="light-card p-3 h-100 bg-white">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="p-2 rounded-3" style="background: #ecfdf5; color: #059669;">
+              <i class="bi bi-globe2 fs-5"></i>
+            </div>
+            <h6 class="mb-0 fw-bold">Live Citations</h6>
+          </div>
+          <p class="text-muted small mb-0">
+            Real-time web search results allow human verification against credible news sources.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function fillSample(headline, article) {
+  document.getElementById('headline').value = headline;
+  document.getElementById('article').value = article;
+  updateWordCount();
+  // highlight input visually
+  document.getElementById('headline').focus();
+}
+
+function updateWordCount() {
+  const headline = document.getElementById('headline').value.trim();
+  const article = document.getElementById('article').value.trim();
+  const fullText = (headline + " " + article).trim();
+  const words = fullText ? fullText.split(/\s+/).length : 0;
+  document.getElementById('wordCountBadge').innerText = words + " words";
+}
+
+document.getElementById('verifyForm').addEventListener('submit', function() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Analyzing with AI & ML...`;
+});
+</script>
+{% endblock %}

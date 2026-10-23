@@ -1,0 +1,23 @@
+{
+  "best_model": "Passive Aggressive",
+  "results": {
+    "Passive Aggressive": {
+      "accuracy": 0.9924259300512364,
+      "precision": 0.9932131991575006,
+      "recall": 0.9908942330142424,
+      "f1": 0.992052360916316
+    },
+    "Multinomial Naive Bayes": {
+      "accuracy": 0.9380708398306973,
+      "precision": 0.9419018259426132,
+      "recall": 0.9273873453187018,
+      "f1": 0.9345882352941176
+    },
+    "Logistic Regression": {
+      "accuracy": 0.9849632434840722,
+      "precision": 0.9805375347544022,
+      "recall": 0.9880924585570862,
+      "f1": 0.9843005000581463
+    }
+  }
+}
