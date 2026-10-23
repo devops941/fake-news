@@ -9,13 +9,22 @@ Features:
 
 import json
 import math
+import os
 import sqlite3
 import uuid
 from datetime import datetime
 from pathlib import Path
 
-import joblib
-import numpy as np
+try:
+    import joblib
+except ImportError:
+    joblib = None
+
+try:
+    import numpy as np
+except ImportError:
+    np = None
+
 from flask import Flask, abort, g, redirect, render_template, request, url_for  # type: ignore[import-untyped, import-not-found]
 
 from utils.ai_service import fact_check_with_ai
@@ -24,7 +33,10 @@ from utils.web_search import build_query, search_related
 
 ROOT_DIR = Path(__file__).resolve().parent
 MODEL_DIR = ROOT_DIR / "model"
-DB_PATH = ROOT_DIR / "checks.db"
+
+# On Vercel / AWS Lambda serverless runtimes, only /tmp is writable
+IS_VERCEL = bool(os.environ.get("VERCEL"))
+DB_PATH = Path("/tmp/checks.db") if IS_VERCEL else ROOT_DIR / "checks.db"
 
 SHORT_TEXT_WORD_THRESHOLD = 20
 SNIPPET_LENGTH = 300
@@ -33,44 +45,20 @@ RELATED_RESULTS_PAGE_SIZE = 5
 
 app = Flask(__name__)
 app.secret_key = "dev-secret-key-kz-ml-02"
+handler = app
 
 
-def get_db():
-    if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
-        g.db.row_factory = sqlite3.Row
-    return g.db
+def init_db(conn=None):
+    close_after = False
+    if conn is None:
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            close_after = True
+        except Exception as exc:
+            print(f"Warning: Cannot connect to DB at {DB_PATH}: {exc}")
+            return
 
-
-@app.teardown_appcontext
-def close_db(exception=None):
-    db = g.pop("db", None)
-    if db is not None:
-        db.close()
-
-
-@app.before_request
-def load_device_id():
-    """Retrieve existing device_id from persistent cookie, or generate a unique ID for this device."""
-    g.device_id = request.cookies.get("device_id") or uuid.uuid4().hex
-
-
-@app.after_request
-def save_device_cookie(response):
-    """Ensure every device receives a persistent 2-year device cookie for private history tracking."""
-    if not request.cookies.get("device_id") and hasattr(g, "device_id"):
-        response.set_cookie(
-            "device_id",
-            g.device_id,
-            max_age=60 * 60 * 24 * 730,  # 2 years
-            httponly=True,
-            samesite="Lax",
-        )
-    return response
-
-
-def init_db():
-    with sqlite3.connect(DB_PATH) as conn:
+    try:
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS checks (
@@ -98,16 +86,44 @@ def init_db():
         ):
             if column not in existing_cols:
                 conn.execute(f"ALTER TABLE checks ADD COLUMN {column} {col_type}")
+        conn.commit()
+    except Exception as exc:
+        print(f"Warning: Failed to initialize SQLite database: {exc}")
+    finally:
+        if close_after:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+
+def get_db():
+    if "db" not in g:
+        try:
+            g.db = sqlite3.connect(DB_PATH)
+            g.db.row_factory = sqlite3.Row
+        except Exception:
+            try:
+                g.db = sqlite3.connect("/tmp/checks.db")
+                g.db.row_factory = sqlite3.Row
+            except Exception:
+                g.db = sqlite3.connect(":memory:")
+                g.db.row_factory = sqlite3.Row
+                init_db(g.db)
+    return g.db
 
 
 def load_model():
+    if joblib is None:
+        return None, None
     model_path = MODEL_DIR / "model.pkl"
     vectorizer_path = MODEL_DIR / "tfidf.pkl"
     if not model_path.exists() or not vectorizer_path.exists():
         return None, None
     try:
         return joblib.load(model_path), joblib.load(vectorizer_path)
-    except Exception:
+    except Exception as exc:
+        print(f"Warning: Could not load ML model: {exc}")
         return None, None
 
 
@@ -121,21 +137,25 @@ model_name = (
 
 def predict_ml(raw_text: str):
     """Clean, vectorise and classify raw_text with local TF-IDF model."""
-    if model is None or vectorizer is None:
+    if model is None or vectorizer is None or np is None:
         return "UNKNOWN", 0.0
 
-    cleaned = preprocess(raw_text)
-    vec = vectorizer.transform([cleaned])
-    pred = model.predict(vec)[0]
+    try:
+        cleaned = preprocess(raw_text)
+        vec = vectorizer.transform([cleaned])
+        pred = model.predict(vec)[0]
 
-    if hasattr(model, "decision_function"):
-        score = model.decision_function(vec)[0]
-        confidence = 1 / (1 + np.exp(-abs(score)))
-    else:
-        confidence = model.predict_proba(vec)[0].max()
+        if hasattr(model, "decision_function"):
+            score = model.decision_function(vec)[0]
+            confidence = 1 / (1 + np.exp(-abs(score)))
+        else:
+            confidence = model.predict_proba(vec)[0].max()
 
-    label = "REAL" if pred == 1 else "FAKE"
-    return label, round(confidence * 100, 2)
+        label = "REAL" if pred == 1 else "FAKE"
+        return label, round(confidence * 100, 2)
+    except Exception as exc:
+        print(f"Warning: ML prediction failed: {exc}")
+        return "UNKNOWN", 0.0
 
 
 @app.route("/", methods=["GET"])

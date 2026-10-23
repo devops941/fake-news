@@ -1,0 +1,14 @@
+data/
+notebook/
+reports/
+scripts/
+*.csv
+.vscode/
+.git/
+.env
+.env.local
+checks.db
+*.db
+requirements-dev.txt
+__pycache__/
+*.pyc
